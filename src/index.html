@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="一个现代的待办事项清单应用">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <title>现代待办清单</title>
+    <link rel="stylesheet" href="/styles/main.css">
+</head>
+
+<body>
+    <!-- 添加移动端菜单按钮 -->
+    <button class="menu-btn" id="menuBtn" aria-label="打开菜单">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12h18M3 6h18M3 18h18"></path>
+        </svg>
+    </button>
+
+    <!-- 添加遮罩层 -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <div class="app-layout">
+        <!-- 侧边栏 -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>📝 待办清单</h1>
+            </div>
+
+            <nav class="sidebar-nav">
+                <button data-filter="all" class="nav-item active" aria-pressed="true">
+                    <span class="icon">📋</span>
+                    <span>全部任务</span>
+                    <span class="count" id="allCount">0</span>
+                </button>
+                <button data-filter="active" class="nav-item" aria-pressed="false">
+                    <span class="icon">📝</span>
+                    <span>待处理</span>
+                    <span class="count" id="activeCount">0</span>
+                </button>
+                <button data-filter="completed" class="nav-item" aria-pressed="false">
+                    <span class="icon">✅</span>
+                    <span>已完成</span>
+                    <span class="count" id="completedCount">0</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button id="clearCompleted" class="clear-btn" hidden>
+                    清除已完成
+                </button>
+            </div>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <div class="main-container">
+                <header class="content-header">
+                    <div class="header-container">
+                        <div class="input-group">
+                            <input type="text" id="todoInput" placeholder="添加新任务，按 Enter 保存" aria-label="新增待办事项"
+                                autocomplete="off">
+                            <button id="addBtn" class="icon-btn" aria-label="添加任务">
+                                <svg aria-hidden="true" viewBox="0 0 24 24" width="24" height="24">
+                                    <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div class="view-options">
+                            <div class="custom-select" id="sortSelect">
+                                <button class="select-button" aria-haspopup="listbox" aria-expanded="false">
+                                    <span class="selected-value">创建时间</span>
+                                    <svg class="select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                        stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                                <ul class="select-dropdown" role="listbox">
+                                    <li role="option" data-value="createdAt" aria-selected="true">创建时间</li>
+                                    <li role="option" data-value="text">名称</li>
+                                    <li role="option" data-value="completed">完成状态</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                <div class="content-container">
+                    <div class="todo-list-container">
+                        <ul id="todoList" class="todo-list" role="list"></ul>
+                    </div>
+                </div>
+
+                <footer class="content-footer">
+                    <p class="todo-stats" id="todoStats"></p>
+                </footer>
+            </div>
+        </main>
+    </div>
+
+    <div id="errorToast" class="toast" role="alert" aria-live="polite" hidden></div>
+
+    <script type="module" src="/app.ts"></script>
+</body>
+
+</html>
