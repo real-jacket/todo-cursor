@@ -1,38 +1,71 @@
 import { Todo } from './Todo';
 import { storage } from '@/utils/storage';
-import type { FilterType, TodoItem } from '@/types/todo';
+import type { FilterType, TodoItem, TodoListState } from '@/types/todo';
+import type { SortKey } from '@/types/sort';
 
 const STORAGE_KEY = 'todos';
-
-export type SortKey = 'createdAt' | 'text' | 'completed';
 
 export class TodoList {
   private todos: Todo[];
   private currentSortKey: SortKey = 'createdAt';
+  private isManualOrder: boolean = false;
+  private manualOrder: number[] = [];
 
   constructor() {
-    this.todos = this.load();
-    // 默认按创建时间排序
-    this.sort('createdAt');
+    const state = this.load();
+    this.todos = (state.todos ?? []).map(Todo.fromJSON);
+    this.currentSortKey = state.currentSortKey ?? 'createdAt';
+    this.isManualOrder = state.isManualOrder ?? false;
+    this.manualOrder = state.manualOrder ?? [];
+
+    if (this.isManualOrder && this.manualOrder.length > 0) {
+      this.restoreManualOrder();
+    } else if (!this.isManualOrder) {
+      this.sort(this.currentSortKey);
+    }
   }
 
-  private load(): Todo[] {
-    const data = storage.get<TodoItem[]>(STORAGE_KEY, []);
-    return data.map(Todo.fromJSON);
+  private load(): TodoListState {
+    const defaultState: TodoListState = {
+      todos: [],
+      currentSortKey: 'createdAt',
+      isManualOrder: false,
+      manualOrder: [],
+    };
+
+    const savedState = storage.get<TodoListState>(STORAGE_KEY, defaultState);
+
+    // 确保返回的状态包含所有必要的字段
+    return {
+      todos: savedState.todos ?? defaultState.todos,
+      currentSortKey: savedState.currentSortKey ?? defaultState.currentSortKey,
+      isManualOrder: savedState.isManualOrder ?? defaultState.isManualOrder,
+      manualOrder: savedState.manualOrder ?? defaultState.manualOrder,
+    };
   }
 
   private save(): void {
-    storage.set(
-      STORAGE_KEY,
-      this.todos.map((todo) => todo.toJSON())
-    );
+    const state: TodoListState = {
+      todos: this.todos.map((todo) => todo.toJSON()),
+      currentSortKey: this.currentSortKey,
+      isManualOrder: this.isManualOrder,
+      manualOrder: this.isManualOrder ? this.todos.map((todo) => todo.id) : [],
+    };
+    storage.set(STORAGE_KEY, state);
   }
 
   add(text: string): Todo {
     const todo = new Todo(text);
-    this.todos.push(todo);
-    // 添加后按当前排序方式重新排序
-    this.sort(this.currentSortKey);
+
+    if (this.isManualOrder) {
+      // 在手动排序模式下，新项目添加到顶部
+      this.todos.unshift(todo);
+    } else {
+      // 非手动排序模式，添加到末尾并按当前方式排序
+      this.todos.push(todo);
+      this.sort(this.currentSortKey);
+    }
+
     this.save();
     return todo;
   }
@@ -79,12 +112,26 @@ export class TodoList {
   }
 
   sort(key: SortKey): Todo[] {
-    this.currentSortKey = key;
+    if (key === this.currentSortKey) {
+      return this.todos;
+    }
 
+    this.currentSortKey = key;
+    this.isManualOrder = key === 'manual';
+
+    if (key === 'manual') {
+      if (this.manualOrder.length > 0) {
+        this.restoreManualOrder();
+      }
+      this.save();
+      return this.todos;
+    }
+
+    // 执行排序
     this.todos.sort((a, b) => {
       switch (key) {
         case 'createdAt':
-          return b.createdAt - a.createdAt; // 最新的在前面
+          return b.createdAt - a.createdAt;
         case 'text':
           return a.text.localeCompare(b.text);
         case 'completed':
@@ -108,11 +155,13 @@ export class TodoList {
 
   reorder(newOrder: number[]): void {
     const todoMap = new Map(this.todos.map((todo) => [todo.id, todo]));
-
     this.todos = newOrder
       .map((id) => todoMap.get(id))
       .filter((todo): todo is Todo => todo !== undefined);
 
+    this.currentSortKey = 'manual';
+    this.isManualOrder = true;
+    this.manualOrder = newOrder;
     this.save();
   }
 
@@ -122,5 +171,47 @@ export class TodoList {
       Object.assign(todo, data);
       this.save();
     }
+  }
+
+  getCurrentSort(): { key: SortKey; isManual: boolean; text: string } {
+    const sortTexts: Record<SortKey, string> = {
+      manual: '自定义排序',
+      createdAt: '创建时间',
+      text: '名称',
+      completed: '完成状态',
+    };
+
+    return {
+      key: this.currentSortKey,
+      isManual: this.isManualOrder,
+      text: sortTexts[this.currentSortKey],
+    };
+  }
+
+  resetSort(): void {
+    // 重置为默认排序（创建时间）
+    this.isManualOrder = false;
+    this.sort('createdAt');
+  }
+
+  canChangeSort(newKey: SortKey): boolean {
+    // 检查是否可以切换到新的排序方式
+    if (newKey === this.currentSortKey) return false;
+    if (!this.isManualOrder) return true;
+    return newKey === 'manual';
+  }
+
+  private restoreManualOrder(): void {
+    const todoMap = new Map(this.todos.map((todo) => [todo.id, todo]));
+    const orderedTodos = this.manualOrder
+      .map((id) => todoMap.get(id))
+      .filter((todo): todo is Todo => todo !== undefined);
+
+    // 添加新增的待办项（不在手动排序列表中的）
+    const newTodos = this.todos.filter(
+      (todo) => !this.manualOrder.includes(todo.id)
+    );
+
+    this.todos = [...orderedTodos, ...newTodos];
   }
 }

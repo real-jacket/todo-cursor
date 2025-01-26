@@ -1,7 +1,7 @@
 import { TodoList } from '@/models/TodoList';
 import { ui } from '@/utils/ui';
 import type { FilterType, TodoContextMenu } from '@/types/todo';
-import type { SortKey } from '@/models/TodoList';
+import type { SortKey } from '@/types/sort';
 
 class TodoApp {
   private todoList: TodoList;
@@ -127,8 +127,70 @@ class TodoApp {
   }
 
   private sortTodos(key: SortKey): void {
-    this.todoList.sort(key);
-    this.render();
+    // 添加排序动画类
+    const items = this.todoListEl.querySelectorAll('.todo-item');
+    items.forEach((item) => item.classList.add('sorting'));
+
+    // 显示排序提示
+    this.showSortIndicator(key);
+
+    // 延迟执行排序以显示动画
+    setTimeout(() => {
+      this.todoList.sort(key);
+
+      // 更新排序选择器的显示和选中状态
+      const selectEl = document.getElementById('sortSelect');
+      const selectedValue = selectEl?.querySelector('.selected-value');
+      const options = selectEl?.querySelectorAll('.select-dropdown li');
+
+      if (selectedValue && options) {
+        const currentSort = this.todoList.getCurrentSort();
+        selectedValue.textContent = currentSort.text;
+
+        options.forEach((option) => {
+          option.setAttribute(
+            'aria-selected',
+            (option as HTMLElement).dataset.value === key ? 'true' : 'false'
+          );
+        });
+      }
+
+      this.render();
+
+      // 移除排序动画类
+      requestAnimationFrame(() => {
+        this.todoListEl.querySelectorAll('.todo-item').forEach((item) => {
+          item.classList.remove('sorting');
+        });
+      });
+    }, 300);
+  }
+
+  private showSortIndicator(key: SortKey): void {
+    const sortTexts: Record<SortKey, string> = {
+      manual: '切换为自定义排序',
+      createdAt: '按创建时间排序',
+      text: '按名称排序',
+      completed: '按完成状态排序',
+    };
+
+    const indicator = document.createElement('div');
+    indicator.className = 'sort-indicator';
+    indicator.textContent = sortTexts[key];
+    document.body.appendChild(indicator);
+
+    // 显示提示
+    requestAnimationFrame(() => {
+      indicator.classList.add('show');
+    });
+
+    // 自动移除提示
+    setTimeout(() => {
+      indicator.classList.remove('show');
+      setTimeout(() => {
+        indicator.remove();
+      }, 300);
+    }, 2000);
   }
 
   private updateCounts(): void {
@@ -176,6 +238,23 @@ class TodoApp {
 
     this.draggedItem.classList.remove('dragging');
     this.updateTodoOrder();
+
+    // 更新排序选择器的显示
+    const sortSelect = document.querySelector('#sortSelect .selected-value');
+    if (sortSelect) {
+      sortSelect.textContent = '自定义排序';
+    }
+
+    // 更新选中状态
+    const options = document.querySelectorAll(
+      '#sortSelect .select-dropdown li'
+    );
+    options.forEach((option) => {
+      option.setAttribute(
+        'aria-selected',
+        (option as HTMLElement).dataset.value === 'manual' ? 'true' : 'false'
+      );
+    });
   }
 
   private updateTodoOrder(): void {
@@ -184,6 +263,8 @@ class TodoApp {
       Number((item as HTMLLIElement).dataset.id)
     );
     this.todoList.reorder(newOrder);
+    // 设置当前排序方式为手动排序
+    this.todoList.sort('manual');
   }
 
   private handleContextMenu(e: MouseEvent): void {
@@ -336,33 +417,66 @@ class TodoApp {
     // 移除旧的事件监听器
     this.todoListEl.removeEventListener('click', this.handleTodoClick);
 
-    this.todoListEl.innerHTML = todos
-      .map(
-        (todo) => `
-          <li class="todo-item ${todo.completed ? 'completed' : ''}" 
-              data-id="${todo.id}"
-              draggable="true"
-              tabindex="0"
-          >
-            <input 
-              type="checkbox" 
-              class="todo-check"
-              ${todo.completed ? 'checked' : ''}
-              aria-label="${todo.completed ? '标记为未完成' : '标记为已完成'}"
+    if (todos.length === 0) {
+      // 显示空状态
+      const message = this.getEmptyStateMessage();
+      this.todoListEl.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">📝</div>
+          <div class="empty-state-text">${message.text}</div>
+          <div class="empty-state-hint">${message.hint}</div>
+        </div>
+      `;
+    } else {
+      // 显示待办列表
+      this.todoListEl.innerHTML = todos
+        .map(
+          (todo) => `
+            <li class="todo-item ${todo.completed ? 'completed' : ''}" 
+                data-id="${todo.id}"
+                draggable="true"
+                tabindex="0"
             >
-            <span class="todo-text">${todo.text}</span>
-            <button class="delete-btn" aria-label="删除">删除</button>
-          </li>
-        `
-      )
-      .join('');
+              <input 
+                type="checkbox" 
+                class="todo-check"
+                ${todo.completed ? 'checked' : ''}
+                aria-label="${todo.completed ? '标记为未完成' : '标记为已完成'}"
+              >
+              <span class="todo-text">${todo.text}</span>
+              <button class="delete-btn" aria-label="删除">删除</button>
+            </li>
+          `
+        )
+        .join('');
 
-    // 添加新的事件监听器
-    this.todoListEl.addEventListener('click', this.handleTodoClick);
+      // 添加新的事件监听器
+      this.todoListEl.addEventListener('click', this.handleTodoClick);
+    }
 
     // 更新统计信息
     ui.updateStats(total, completed);
     this.updateCounts();
+  }
+
+  private getEmptyStateMessage(): { text: string; hint: string } {
+    switch (this.currentFilter) {
+      case 'active':
+        return {
+          text: '暂无待处理的任务',
+          hint: '添加新任务或查看其他分类',
+        };
+      case 'completed':
+        return {
+          text: '暂无已完成的任务',
+          hint: '完成一些任务后再来看看吧',
+        };
+      default:
+        return {
+          text: '暂无待办事项',
+          hint: '点击上方的输入框添加新任务',
+        };
+    }
   }
 
   // 将事件处理器定义为类的方法
@@ -436,33 +550,34 @@ class TodoApp {
     dropdownEl.addEventListener('click', (e) => {
       e.stopPropagation();
       const target = e.target as HTMLElement;
-      if (target.matches('li')) {
-        const value = target.dataset.value;
-        const text = target.textContent;
+      if (!target.matches('li')) return;
 
-        // 更新选中状态
-        dropdownEl.querySelectorAll('li').forEach((li) => {
-          li.setAttribute('aria-selected', 'false');
-        });
-        target.setAttribute('aria-selected', 'true');
+      const value = target.dataset.value;
+      if (!value) return;
 
-        // 更新显示文本
-        selectedValue.textContent = text;
+      // 更新选中状态
+      dropdownEl.querySelectorAll('li').forEach((li) => {
+        li.setAttribute('aria-selected', li === target ? 'true' : 'false');
+      });
 
-        // 关闭下拉菜单
-        closeDropdown();
+      // 更新显示文本
+      selectedValue.textContent = target.textContent;
 
-        // 触发排序并重新渲染
-        if (value) {
-          this.sortTodos(value as SortKey);
-        }
-      }
+      // 关闭下拉菜单
+      closeDropdown();
+
+      // 触发排序并重新渲染
+      this.sortTodos(value as SortKey);
     });
 
     // 点击外部关闭下拉菜单
     document.addEventListener('click', () => {
       closeDropdown();
     });
+
+    // 初始化选中状态
+    const currentSort = this.todoList.getCurrentSort();
+    selectedValue.textContent = currentSort.text;
   }
 }
 

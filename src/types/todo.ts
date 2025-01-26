@@ -1,3 +1,5 @@
+import type { SortKey } from './sort';
+
 export interface TodoItem {
   id: number;
   text: string;
@@ -12,4 +14,11 @@ export interface TodoContextMenu {
   x: number;
   y: number;
   todoId: number;
+}
+
+export interface TodoListState {
+  todos: TodoItem[];
+  currentSortKey: SortKey;
+  isManualOrder: boolean;
+  manualOrder: number[];
 }

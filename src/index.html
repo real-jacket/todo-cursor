@@ -78,11 +78,14 @@
                                             d="M19 9l-7 7-7-7" />
                                     </svg>
                                 </button>
-                                <ul class="select-dropdown" role="listbox">
-                                    <li role="option" data-value="createdAt" aria-selected="true">创建时间</li>
-                                    <li role="option" data-value="text">名称</li>
-                                    <li role="option" data-value="completed">完成状态</li>
-                                </ul>
+                                <div class="select-dropdown">
+                                    <ul>
+                                        <li data-value="manual" aria-selected="false">自定义排序</li>
+                                        <li data-value="createdAt" aria-selected="true">创建时间</li>
+                                        <li data-value="text" aria-selected="false">名称</li>
+                                        <li data-value="completed" aria-selected="false">完成状态</li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     </div>
