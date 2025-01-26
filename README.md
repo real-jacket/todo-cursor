@@ -78,8 +78,9 @@ src/
 
 ### 环境要求
 
-- Node.js >= 14
-- npm >= 6
+- Node.js >= 22.12
+- npm >= 10
+- pnpm >= 8
 
 ### 安装和运行
 
@@ -91,13 +92,13 @@ git clone https://github.com/yourusername/modern-todo-app.git
 cd modern-todo-app
 
 # 安装依赖
-npm install
+pnpm install
 
 # 启动开发服务器
-npm run dev
+pnpm dev
 
 # 构建生产版本
-npm run build
+pnpm build
 ```
 
 ## 🤝 贡献指南
