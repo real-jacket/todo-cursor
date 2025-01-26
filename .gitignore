@@ -9,6 +9,10 @@ node_modules/
 dist/
 build/
 
+# Vite
+*.local
+.vite/
+
 # Development
 .env
 .env.local
